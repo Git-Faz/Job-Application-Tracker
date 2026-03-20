@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "515544373462",
+    "project_id": "job-application-tracker-faz",
+    "storage_bucket": "job-application-tracker-faz.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:515544373462:android:57e3c49a1ed2cb2127d177",
+        "android_client_info": {
+          "package_name": "com.faz.jobapplicationtracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcpyHGpwNET5K1lAg8TFUOsJey_GAdlrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
