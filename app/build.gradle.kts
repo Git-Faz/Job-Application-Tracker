@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    implementation ("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material3:material3")
 
@@ -58,6 +59,8 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx:23.2.1")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)

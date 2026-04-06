@@ -2,4 +2,9 @@
 <resources>
 
     <style name="Theme.JobApplicationTracker" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Jobbit.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/purple_200</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/jobbit</item>
+        <item name="postSplashScreenTheme">@style/Theme.JobApplicationTracker</item>
+    </style>
 </resources>

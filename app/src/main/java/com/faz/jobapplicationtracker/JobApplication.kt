@@ -1,6 +1,6 @@
 package com.faz.jobapplicationtracker
 
-import androidx.compose.foundation.clickable
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,7 +10,9 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -24,6 +26,9 @@ fun JobApplication(
 
     val db = FirebaseFirestore.getInstance()
     val userId = FirebaseAuth.getInstance().currentUser?.uid
+    val context = LocalContext.current
+
+    var isSaving by remember { mutableStateOf(false) }
 
     var company by remember { mutableStateOf(existingJob?.company ?: "") }
     var role by remember { mutableStateOf(existingJob?.role ?: "") }
@@ -37,11 +42,13 @@ fun JobApplication(
     var expanded by remember { mutableStateOf(false) }
 
     val statusOptions = listOf(
-        "Applied","Interview","Offer","Cancelled","Unavailable"
+        "Applied","Interview","Offer","Rejected","Cancelled","Unavailable"
     )
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isSaving) onDismiss()
+        },
         title = {
             Text(if (existingJob == null) "Add New Application" else "Edit Application")
         },
@@ -52,24 +59,12 @@ fun JobApplication(
                     .fillMaxWidth()
                     .padding(top = 8.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
 
-                OutlinedTextField(
-                    value = company,
-                    onValueChange = { company = it },
-                    label = { Text("Company *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
+                OutlinedTextField(company, { company = it }, label = { Text("Company *") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
 
-                OutlinedTextField(
-                    value = role,
-                    onValueChange = { role = it },
-                    label = { Text("Position *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
+                OutlinedTextField(role, { role = it }, label = { Text("Position *") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
 
                 ExposedDropdownMenuBox(
                     expanded = expanded,
@@ -81,6 +76,7 @@ fun JobApplication(
                         readOnly = true,
                         label = { Text("Status") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.menuAnchor()
                     )
 
@@ -100,16 +96,16 @@ fun JobApplication(
                     }
                 }
 
-                DatePickerField(date = date, onDateSelected = { date = it })
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     OutlinedTextField(
                         value = location,
                         onValueChange = { location = it },
                         label = { Text("Location") },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     )
 
                     OutlinedTextField(
@@ -117,66 +113,141 @@ fun JobApplication(
                         onValueChange = { salary = it },
                         label = { Text("Salary") },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(8.dp)
                     )
                 }
-                OutlinedTextField(url, { url = it }, label = { Text("Job URL") })
-                OutlinedTextField(notes, { notes = it }, label = { Text("Notes") })
+
+                DatePickerField(
+                    date = date,
+                    onDateSelected = { date = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(url, { url = it }, label = { Text("Job URL") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+
+                OutlinedTextField(notes, { notes = it }, label = { Text("Notes") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
             }
         },
 
         confirmButton = {
-            Button(onClick = {
 
-                val parts = salary.split("-")
+            Button(
+                enabled = !isSaving,
+                onClick = {
 
-                val min = parts.getOrNull(0)
-                    ?.replace("₹", "")?.replace("L", "")?.trim()
-                    ?.toIntOrNull() ?: 0
+                    if (isSaving) return@Button
+                    if (company.isBlank() || role.isBlank()) return@Button
 
-                val max = parts.getOrNull(1)
-                    ?.replace("₹", "")?.replace("L", "")?.trim()
-                    ?.toIntOrNull() ?: 0
+                    isSaving = true
 
-                val job = Job(
-                    role = role,
-                    company = company,
-                    status = status,
-                    date = date,
-                    location = location,
-                    minSalary = min,
-                    maxSalary = max,
-                    url = url,
-                    notes = notes
-                )
+                    val parts = salary.split("-")
 
-                // 🔥 SAVE TO FIRESTORE
-                if (userId != null) {
-                    db.collection("users")
-                        .document(userId)
-                        .collection("jobs")
-                        .add(job)
-                        .addOnSuccessListener {
-                            onSave(job)
+                    val min = parts.getOrNull(0)
+                        ?.replace("₹", "")?.replace("L", "")?.trim()
+                        ?.toIntOrNull() ?: 0
+
+                    val max = parts.getOrNull(1)
+                        ?.replace("₹", "")?.replace("L", "")?.trim()
+                        ?.toIntOrNull() ?: 0
+
+                    val job = Job(
+                        role = role,
+                        company = company,
+                        status = status,
+                        date = date,
+                        location = location,
+                        minSalary = min,
+                        maxSalary = max,
+                        url = url,
+                        notes = notes
+                    )
+
+                    if (userId != null) {
+
+                        if (existingJob == null) {
+
+                            val docRef = db.collection("users")
+                                .document(userId)
+                                .collection("jobs")
+                                .document()
+
+                            val jobWithId = job.copy(id = docRef.id)
+
+                            docRef.set(jobWithId)
+                                .addOnSuccessListener {
+
+                                    JobNotificationManager.scheduleFollowUp(context, jobWithId)
+
+                                    // ❌ REMOVED onSave() → prevents duplication
+                                    onDismiss()
+                                }
+                                .addOnFailureListener {
+                                    isSaving = false
+                                }
+
+                        } else {
+
+                            val updatedJob = job.copy(id = existingJob.id)
+
+                            db.collection("users")
+                                .document(userId)
+                                .collection("jobs")
+                                .document(existingJob.id)
+                                .set(updatedJob)
+                                .addOnSuccessListener {
+
+                                    JobNotificationManager.showInstantNotification(
+                                        context,
+                                        "Application Updated",
+                                        "${updatedJob.company} - ${updatedJob.status}"
+                                    )
+
+                                    // ❌ REMOVED onSave()
+                                    onDismiss()
+                                }
+                                .addOnFailureListener {
+                                    isSaving = false
+                                }
                         }
+                    } else {
+                        Log.e("AUTH", "User not logged in")
+                        isSaving = false
+                    }
                 }
+            ) {
 
-            }) {
-                Text("Save")
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else {
+                    Text("Save")
+                }
             }
         },
 
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                enabled = !isSaving,
+                onClick = onDismiss
+            ) {
                 Text("Cancel")
             }
         }
     )
 }
 
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatePickerField(date: String, onDateSelected: (String) -> Unit) {
+fun DatePickerField(
+    date: String,
+    onDateSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(8.dp)
+) {
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -194,10 +265,7 @@ fun DatePickerField(date: String, onDateSelected: (String) -> Unit) {
                         val millis = datePickerState.selectedDateMillis
 
                         if (millis != null) {
-
-                            val formatter =
-                                java.text.SimpleDateFormat("dd/MM/yyyy")
-
+                            val formatter = java.text.SimpleDateFormat("dd/MM/yyyy")
                             val formattedDate =
                                 formatter.format(java.util.Date(millis))
 
@@ -218,9 +286,7 @@ fun DatePickerField(date: String, onDateSelected: (String) -> Unit) {
             }
 
         ) {
-
             DatePicker(state = datePickerState)
-
         }
     }
 
@@ -230,12 +296,11 @@ fun DatePickerField(date: String, onDateSelected: (String) -> Unit) {
         readOnly = true,
         label = { Text("Applied Date") },
         trailingIcon = {
-            IconButton(
-                onClick = { showDatePicker = true }
-            ) {
-                Icon(Icons.Outlined.CalendarToday, contentDescription = "Select Date")
+            IconButton(onClick = { showDatePicker = true }) {
+                Icon(Icons.Outlined.CalendarToday, null)
             }
         },
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
+        shape = shape
     )
 }
